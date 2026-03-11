@@ -1,0 +1,66 @@
+name: Build and Deploy to Azure Container Apps
+
+# ─── TRIGGERS ───────────────────────────────────────────────
+# push: deploys when code merges to main (production deploy)
+# pull_request: runs the full pipeline on PRs so you can verify before merging
+# workflow_dispatch: manual "Run workflow" button in the Actions tab
+on:
+  push:
+    branches: [main]
+    paths: [src/**]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# ─── ENVIRONMENT VARIABLES ──────────────────────────────────
+# vars.* = GitHub repo Variables (non-sensitive, visible in logs)
+# secrets.* = GitHub repo Secrets (sensitive, masked in logs)
+# github.sha = the full commit hash — used to tag images for traceability
+env:
+  REGISTRY: ${{ vars.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io
+  IMAGE_NAME: zava-storefront
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  CONTAINER_APP_NAME: ${{ vars.AZURE_CONTAINER_APP_NAME }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Get the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Authenticate to Azure using the service principal JSON
+      #    This establishes an Azure CLI session on the runner
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 3. Authenticate to our private container registry
+      #    Uses the Azure CLI session from step 2 (no extra credentials needed)
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ vars.AZURE_CONTAINER_REGISTRY_NAME }}
+
+      # 4. Build the Docker image and push two tags:
+      #    - :sha for immutable traceability (you can always find which commit produced which image)
+      #    - :latest for convenience (Container Apps can pull the newest)
+      - name: Build and push Docker image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            ./src
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      # 5. Deploy to Container Apps
+      #    This updates the container app to use the new image
+      #    acrName + acrUsername/Password not needed because we use managed identity on the Container App
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
