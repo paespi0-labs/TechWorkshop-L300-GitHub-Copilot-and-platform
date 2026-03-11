@@ -78,6 +78,7 @@ module ai 'modules/ai.bicep' = {
     resourceToken: resourceToken
     appInsightsId: monitoring.outputs.appInsightsId
     identityPrincipalId: identity.outputs.principalId
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
   }
 }
 

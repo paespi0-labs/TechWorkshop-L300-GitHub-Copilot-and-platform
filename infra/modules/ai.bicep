@@ -2,6 +2,7 @@ param location string
 param resourceToken string
 param appInsightsId string
 param identityPrincipalId string
+param logAnalyticsWorkspaceId string
 
 // Storage Account required by AI Foundry Hub
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -130,6 +131,39 @@ resource cognitiveServicesUserRole 'Microsoft.Authorization/roleAssignments@2022
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
     principalId: identityPrincipalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Diagnostic settings: send AI Services logs and metrics to Log Analytics
+resource aiDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'ai-diagnostics'
+  scope: aiServices
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: 'Audit'
+        enabled: true
+      }
+      {
+        category: 'RequestResponse'
+        enabled: true
+      }
+      {
+        category: 'AzureOpenAIRequestUsage'
+        enabled: true
+      }
+      {
+        category: 'Trace'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
   }
 }
 
