@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Azure.AI.ContentSafety;
 using Azure.Identity;
 
 namespace ZavaStorefront.Services;
@@ -10,16 +11,29 @@ public class ChatService
     private readonly IConfiguration _configuration;
     private readonly ILogger<ChatService> _logger;
     private static readonly DefaultAzureCredential _credential = new();
+    private readonly ContentSafetyClient _contentSafetyClient;
 
     public ChatService(HttpClient httpClient, IConfiguration configuration, ILogger<ChatService> logger)
     {
         _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
+
+        var endpoint = _configuration["ChatBot:Endpoint"]
+            ?? throw new InvalidOperationException("ChatBot:Endpoint is not configured.");
+        var baseUri = new Uri(endpoint);
+        _contentSafetyClient = new ContentSafetyClient(
+            new Uri($"{baseUri.Scheme}://{baseUri.Host}"), _credential);
     }
 
     public async Task<string> SendMessageAsync(string userMessage)
     {
+        var (isSafe, reason) = await EvaluateContentSafetyAsync(userMessage);
+        if (!isSafe)
+        {
+            return $"Your message was blocked by our content safety system. Reason: {reason}";
+        }
+
         var endpoint = _configuration["ChatBot:Endpoint"]
             ?? throw new InvalidOperationException("ChatBot:Endpoint is not configured.");
 
@@ -61,5 +75,27 @@ public class ChatService
             .GetString();
 
         return message ?? "No response received.";
+    }
+
+    private async Task<(bool isSafe, string? reason)> EvaluateContentSafetyAsync(string text)
+    {
+        var options = new AnalyzeTextOptions(text);
+        var response = await _contentSafetyClient.AnalyzeTextAsync(options);
+
+        var categories = response.Value.CategoriesAnalysis;
+        var results = categories.Select(c => $"{c.Category}={c.Severity}");
+        _logger.LogInformation("ContentSafety evaluation: {Results}", string.Join(", ", results));
+
+        foreach (var category in categories)
+        {
+            if (category.Severity >= 2)
+            {
+                _logger.LogWarning("ContentSafety violation blocked: {Category} severity {Severity}",
+                    category.Category, category.Severity);
+                return (false, $"{category.Category} content detected (severity {category.Severity}).");
+            }
+        }
+
+        return (true, null);
     }
 }
