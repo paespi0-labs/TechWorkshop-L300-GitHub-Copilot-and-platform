@@ -4,6 +4,7 @@ param identityId string
 param acrLoginServer string
 param appInsightsConnectionString string
 param logAnalyticsName string
+param identityClientId string
 
 // Reference existing Log Analytics workspace for Container Apps Environment
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
@@ -43,7 +44,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     configuration: {
       ingress: {
         external: true
-        targetPort: 80
+        targetPort: 8080
         transport: 'auto'
       }
       registries: [
@@ -62,6 +63,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: appInsightsConnectionString
+            }
+            {
+              name: 'AZURE_CLIENT_ID'
+              value: identityClientId
             }
           ]
           resources: {

@@ -1,6 +1,7 @@
 param location string
 param resourceToken string
 param appInsightsId string
+param identityPrincipalId string
 
 // Storage Account required by AI Foundry Hub
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -41,6 +42,7 @@ resource aiServices 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   properties: {
     customSubDomainName: 'azais${resourceToken}'
     publicNetworkAccess: 'Enabled'
+    disableLocalAuth: true
   }
 }
 
@@ -117,6 +119,17 @@ resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
     friendlyName: 'ZavaStorefront AI Project'
     hubResourceId: aiHub.id
     publicNetworkAccess: 'Enabled'
+  }
+}
+
+// Role assignment: Cognitive Services User for managed identity on AI Services
+resource cognitiveServicesUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(aiServices.id, identityPrincipalId, 'a97b65f3-24c7-4388-baec-2e87135dc908')
+  scope: aiServices
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
+    principalId: identityPrincipalId
+    principalType: 'ServicePrincipal'
   }
 }
 

@@ -62,6 +62,7 @@ module web 'modules/web.bicep' = {
     location: location
     resourceToken: resourceToken
     identityId: identity.outputs.id
+    identityClientId: identity.outputs.clientId
     acrLoginServer: acr.outputs.loginServer
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     logAnalyticsName: monitoring.outputs.logAnalyticsName
@@ -76,6 +77,7 @@ module ai 'modules/ai.bicep' = {
     location: location
     resourceToken: resourceToken
     appInsightsId: monitoring.outputs.appInsightsId
+    identityPrincipalId: identity.outputs.principalId
   }
 }
 
