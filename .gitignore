@@ -144,3 +144,15 @@ desktop.ini
 !/.gitattributes
 !/.gitignore
 .DS_Store
+
+# Squad (local AI team scaffolding — not part of deliverables)
+.squad/
+.copilot/
+.github/agents/squad.agent.md
+.github/workflows/squad-*.yml
+.github/workflows/sync-squad-labels.yml
+.squad-workstream
+.gitattributes
+
+# VS Code workspace file
+*.code-workspace
