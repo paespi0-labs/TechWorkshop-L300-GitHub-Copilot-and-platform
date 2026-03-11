@@ -82,6 +82,16 @@ module ai 'modules/ai.bicep' = {
   }
 }
 
+// Azure Monitor Workbook for AI Services Observability
+module workbook 'modules/workbook.bicep' = {
+  name: 'workbook'
+  scope: rg
+  params: {
+    location: location
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+  }
+}
+
 // Required outputs
 output RESOURCE_GROUP_ID string = rg.id
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.outputs.loginServer
